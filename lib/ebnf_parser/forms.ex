@@ -216,7 +216,7 @@ defmodule EbnfParser.Forms do
       ],
       terminal: [
         # Productions for terminals:
-        "IRIREF	  ::=  	'<' ([^<>\\\"{}|^`\\]-[#x00-#x20])* '>'",
+        "IRIREF	  ::=  	'<' ([^<>\\\"{}|^`\\]-[#x01-#x20])* '>'",
         "PNAME_NS	  ::=  	PN_PREFIX? ':'",
         "PNAME_LN	  ::=  	PNAME_NS PN_LOCAL",
         "BLANK_NODE_LABEL	  ::=  	'_:' ( PN_CHARS_U | [0-9] ) ((PN_CHARS|'.')* PN_CHARS)?",
