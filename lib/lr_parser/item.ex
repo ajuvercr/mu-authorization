@@ -7,11 +7,19 @@ defmodule Item do
     def to_string(%Item{rule: {name, parts}, index: index}) do
       interior =
         parts
-        |> Enum.map(&Kernel.to_string/1)
+        |> Enum.map(&part_to_string/1)
         |> List.insert_at(index, '.')
-        |> Enum.join("")
+        |> Enum.join(" ")
 
-      "#{inspect(name)} -> #{interior}"
+      "'#{inspect(name)} -> #{interior}'"
+    end
+
+    defp part_to_string(x) when is_atom(x) do
+      ":" <> Kernel.to_string(x)
+    end
+
+    defp part_to_string(x) do
+      Kernel.to_string(x)
     end
   end
 

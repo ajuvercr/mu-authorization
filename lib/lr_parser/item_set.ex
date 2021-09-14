@@ -4,15 +4,13 @@ alias LR.Grammar.ItemSet
 defmodule ItemSet do
   # defstruct [:items]
 
-  defimpl String.Chars, for: ItemSet do
-    def to_string(items) do
-      interior =
-        items
-        |> Enum.map(&Kernel.to_string/1)
-        |> Enum.join("    ")
+  def to_string(items) do
+    interior =
+      items
+      |> Enum.map(&Kernel.to_string/1)
+      |> Enum.join("    ")
 
-      "ItemSet[#{interior}]"
-    end
+    "ItemSet[#{interior}]"
   end
 
   def new do
