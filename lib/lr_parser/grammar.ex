@@ -236,6 +236,7 @@ defmodule LR.Grammar do
         IO.puts("shift")
 
         trans = transition.transitions
+        # TODO: make x like {x, something something}
         [x | xs] = queue
 
         case trans[get_key(x)] do
@@ -253,6 +254,8 @@ defmodule LR.Grammar do
         s_rest = Enum.drop([state | s_rest], item.index)
 
         {thing, _} = item.rule
+
+        # TODO: make x like {x, something something}
         thing = NonTerminal.new(thing, base |> Enum.reverse())
         # new_stack = [thing| stack_rest]
         if List.first(base) == dollar() do
@@ -263,8 +266,7 @@ defmodule LR.Grammar do
     end
   end
 
-  def test(test_str \\ "(x,x)") do
-    rules = rules()
+  def rules_to_state_map(start, rules) do
     rules_dict = rules |> rules_dict()
 
     nullables =
@@ -272,6 +274,7 @@ defmodule LR.Grammar do
       |> Enum.filter(&Enum.empty?(elem(&1, 1)))
       |> Enum.map(&elem(&1, 0))
       |> MapSet.new()
+      |> IO.inspect(label: "pre nullables")
       |> nullable(rules)
       |> IO.inspect(label: "nullables")
 
@@ -294,7 +297,7 @@ defmodule LR.Grammar do
 
     # Append dollar() to state you want to parse to
     start =
-      ItemSet.add_item(ItemSet.new(), {:ST, [:S, dollar()]})
+      ItemSet.add_item(ItemSet.new(), start)
       |> closure(rules_dict)
 
     # Currently the only passed state is the start_state
@@ -307,7 +310,12 @@ defmodule LR.Grammar do
     state_map = reducers(t, follows)
 
     # Add transitions to transition table
-    state_map = Enum.reduce(e, state_map, &Action.add_transition_in/2)
+    {start, Enum.reduce(e, state_map, &Action.add_transition_in/2)}
+  end
+
+  def test(test_str \\ "(x,x)") do
+    rules = rules()
+    {start, state_map} = rules_to_state_map({:ST, [:S, dollar()]}, rules)
 
     # Enum.each(t, fn t ->
     #   Enum.each(t, fn x -> IO.puts(to_string(x)) end)
