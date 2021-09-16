@@ -158,7 +158,6 @@ defmodule LR.Grammar do
   def calc_firsts(firsts, nullables, rules) do
     new_firsts =
       Enum.reduce(rules, firsts, fn {name, parts}, firsts ->
-
         rule_firsts =
           get_to_first_not_nullables(parts, nullables)
           |> Enum.reduce(firsts[name], &MapSet.union(firsts[&1], &2))
@@ -228,8 +227,6 @@ defmodule LR.Grammar do
 
     case Map.get(transition.reducers, get_key(queue_head), nil) do
       nil ->
-        IO.puts("shift")
-
         trans = transition.transitions
         # TODO: make x like {x, something something}
         [x | xs] = queue
@@ -243,7 +240,6 @@ defmodule LR.Grammar do
         end
 
       item ->
-        IO.puts("reduce")
         {base, stack_rest} = Enum.split(stack, item.index)
 
         s_rest = Enum.drop([state | s_rest], item.index)
@@ -274,7 +270,6 @@ defmodule LR.Grammar do
       |> MapSet.new()
       # Calculate other nullables
       |> nullable(rules)
-      |> IO.inspect(label: "nullables")
 
     all_parts =
       rules |> Enum.flat_map(&elem(&1, 1)) |> Enum.concat(rules |> Enum.map(&elem(&1, 0)))
@@ -282,8 +277,6 @@ defmodule LR.Grammar do
     firsts =
       all_parts
       |> Enum.map(fn x ->
-        IO.inspect(x, label: "doing this")
-
         case x do
           %Terminal{} ->
             {x, MapSet.new() |> MapSet.put(x)}
@@ -294,11 +287,8 @@ defmodule LR.Grammar do
       end)
       |> Map.new()
       |> calc_firsts(nullables, rules)
-      |> IO.inspect(label: "Firsts")
 
-    follows =
-      calc_follow(%{}, firsts, nullables, rules)
-      |> IO.inspect(label: "follows")
+    follows = calc_follow(%{}, firsts, nullables, rules)
 
     # Append dollar() to state you want to parse to
     start =
@@ -321,10 +311,6 @@ defmodule LR.Grammar do
   def test(test_str \\ "(x,x)") do
     rules = rules()
     {start, state_map} = rules_to_state_map({:ST, [:S, dollar()]}, rules)
-
-    # Enum.each(t, fn t ->
-    #   Enum.each(t, fn x -> IO.puts(to_string(x)) end)
-    # end)
 
     # Parse
     tokens = (test_str <> "$") |> String.graphemes() |> Enum.map(&Terminal.new/1)

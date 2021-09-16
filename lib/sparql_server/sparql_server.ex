@@ -65,6 +65,8 @@ defmodule SparqlServer do
 
     children = [
       {Cache.Types, %{}},
+      # {LR.Parser.Server, {:Expression, LR.Parser.test_ebnf()}},
+      {LR.Parser.Server, {:Sparql, EbnfParser.Forms.sparql()}},
       {Profiler, nil},
       {Support.Id, nil},
       {SparqlClient.InfoEndpoint, nil},

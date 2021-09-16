@@ -186,7 +186,5 @@ defmodule Terminal do
     terminal_forms
     |> flatten()
     |> Enum.map(fn {name, rest} -> {name, rest |> to_regex() |> do_compile()} end)
-
-    # |> IO.inspect()
   end
 end
