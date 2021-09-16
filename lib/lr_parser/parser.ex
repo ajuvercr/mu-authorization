@@ -176,7 +176,7 @@ defmodule LR.Parser do
 
   def test(test_str) do
     # EbnfParser.Forms.sparql()
-    %{terminal: terminal_forms, non_terminal: non_terminals} = test_ebnf()
+    %{terminal: terminal_forms, non_terminal: non_terminals} = EbnfParser.Forms.sparql() # test_ebnf()
 
     terminals =
       terminal_forms
@@ -234,27 +234,29 @@ defmodule LR.Parser do
       Enum.map(some, fn {[x], id} -> {[[x, id], []], id} end)
       |> Enum.concat(simples)
       |> Enum.flat_map(fn {k, v} -> Enum.map(k, &{v, &1}) end)
-    #   |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+      |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
 
-    # {singles, non_singles} =
-    #   Enum.split_with(rules, fn {k, v} ->
-    #     length(v) == 1 and k |> to_string |> String.starts_with?("__")
-    #   end)
+    {singles, non_singles} =
+      Enum.split_with(rules, fn {k, v} ->
+        length(v) == 1 and k |> to_string |> String.starts_with?("__")
+      end)
 
-    # singles = Map.new(singles) |> IO.inspect()
-    # remove_singles = fn x -> Map.get(singles, x, [x]) end
+    singles = singles |> Enum.map(fn {k, [v]} -> {k, v} end) |> Map.new() |> IO.inspect(label: "Singles")
+    remove_singles = fn x -> Map.get(singles, x, [x]) end
 
-    # non_singles =
-    #   non_singles
-    #   |> Enum.map(fn {k, v} ->
-    #     vv = Enum.map(v, &Enum.flat_map(&1, remove_singles))
-    #     {k, vv}
-    #   end)
+    non_singles =
+      non_singles
+      |> Enum.map(fn {k, v} ->
+        vv = Enum.map(v, &Enum.flat_map(&1, remove_singles))
+        {k, vv}
+      end)
+      |> IO.inspect(label: "Non singles")
 
-    # rules = Enum.flat_map(non_singles, fn {x, v} -> Enum.map(v, &{x, &1}) end)
+    rules = Enum.flat_map(non_singles, fn {x, v} -> Enum.map(v, &{x, &1}) end)
+    |> IO.inspect(label: "Rules")
 
     # simples
-    start = {:ST, [:Expression, LR.Grammar.Terminal.dollar()]}
+    start = {:ST, [:Sparql, LR.Grammar.Terminal.dollar()]}
 
     {start, state_map} = LR.Grammar.rules_to_state_map(start, rules)
 
@@ -265,8 +267,8 @@ defmodule LR.Parser do
     #   |> Enum.filter(&is_list/1)
 
     tokens =
-    (tokenize(regexes, test_str) |> Enum.map(&TerminalInstance.new/1)) ++
-      [LR.Grammar.Terminal.dollar()]
+      (tokenize(regexes, test_str) |> Enum.map(&TerminalInstance.new/1)) ++
+        [LR.Grammar.Terminal.dollar()]
 
     LR.Grammar.parse([start], state_map, [], tokens)
 

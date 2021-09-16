@@ -55,7 +55,7 @@ defmodule LR.Grammar do
   end
 
   def get_key(%TerminalInstance{id: id}) do
-    id
+    %Terminal{id: id}
   end
 
   def get_key(x) do
@@ -158,13 +158,11 @@ defmodule LR.Grammar do
   def calc_firsts(firsts, nullables, rules) do
     new_firsts =
       Enum.reduce(rules, firsts, fn {name, parts}, firsts ->
-        IO.inspect({name, parts, firsts[name]}, label: "Rule")
+
         rule_firsts =
           get_to_first_not_nullables(parts, nullables)
-          |> IO.inspect()
           |> Enum.reduce(firsts[name], &MapSet.union(firsts[&1], &2))
 
-          IO.inspect(rule_firsts, label: "to")
         Map.put(firsts, name, rule_firsts)
       end)
 
@@ -228,7 +226,7 @@ defmodule LR.Grammar do
     queue_head = List.first(queue, nil)
     transition = transitions[state]
 
-    case Map.get(transition.reducers, queue_head, nil) do
+    case Map.get(transition.reducers, get_key(queue_head), nil) do
       nil ->
         IO.puts("shift")
 
@@ -264,8 +262,9 @@ defmodule LR.Grammar do
   end
 
   def rules_to_state_map(start, rules) do
+    rules = [start | rules]
     rules_dict = rules |> rules_dict()
-    IO.inspect(rules)
+
     nullables =
       rules
       # Get empty rules
@@ -277,12 +276,14 @@ defmodule LR.Grammar do
       |> nullable(rules)
       |> IO.inspect(label: "nullables")
 
-    all_parts = (rules |> Enum.flat_map(&elem(&1, 1))) |> Enum.concat(rules |> Enum.map(&elem(&1, 0)))
+    all_parts =
+      rules |> Enum.flat_map(&elem(&1, 1)) |> Enum.concat(rules |> Enum.map(&elem(&1, 0)))
 
     firsts =
       all_parts
       |> Enum.map(fn x ->
         IO.inspect(x, label: "doing this")
+
         case x do
           %Terminal{} ->
             {x, MapSet.new() |> MapSet.put(x)}
@@ -295,9 +296,9 @@ defmodule LR.Grammar do
       |> calc_firsts(nullables, rules)
       |> IO.inspect(label: "Firsts")
 
-
-      follows = calc_follow(%{}, firsts, nullables, rules)
-    |> IO.inspect(label: "follows")
+    follows =
+      calc_follow(%{}, firsts, nullables, rules)
+      |> IO.inspect(label: "follows")
 
     # Append dollar() to state you want to parse to
     start =
