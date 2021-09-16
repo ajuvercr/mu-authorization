@@ -1,4 +1,5 @@
 alias LR.Grammar.Terminal
+alias LR.Grammar.Terminal.Instance, as: TerminalInstance
 alias LR.Grammar.NonTerminal
 alias LR.Grammar.Item
 alias LR.Grammar.ItemSet
@@ -96,7 +97,7 @@ defmodule LR.Parser do
         {Map.get(new_dict, items), new_dict}
       else
         id = gen_id()
-        {id, new_dict |> Map.put([items], id)}
+        {id, new_dict |> Map.put(items, id)}
       end
 
     {id, %{things | simples: new_dict}}
@@ -108,7 +109,7 @@ defmodule LR.Parser do
         {Map.get(new_dict, items), new_dict}
       else
         id = gen_id()
-        {id, new_dict |> Map.put([items], id)}
+        {id, new_dict |> Map.put(items, id)}
       end
 
     {id, %{things | some: new_dict}}
@@ -118,15 +119,19 @@ defmodule LR.Parser do
     {atom, dict}
   end
 
-  defp into_rules({:one_of, items}, dict) do
-    {items, new_dict} = Enum.map_reduce(items, dict, &into_rules/2)
-    insert_if_not_present(items, new_dict)
+  defp into_rules({:terminal, atom}, dict) do
+    {%Terminal{id: atom}, dict}
   end
 
-  # TODO special case if only one item
-  defp into_rules({:paren_group, [x]}, dict) do
-    into_rules(x, dict)
+  defp into_rules({:one_of, items}, dict) do
+    {items, new_dict} = Enum.map_reduce(items, dict, &into_rules/2)
+    insert_if_not_present(items |> Enum.map(&[&1]), new_dict)
   end
+
+  # # # TODO special case if only one item
+  # defp into_rules({:paren_group, [x]}, dict) do
+  #   into_rules(x, dict)
+  # end
 
   defp into_rules({:paren_group, items}, dict) do
     {items, new_dict} = Enum.map_reduce(items, dict, &into_rules/2)
@@ -156,13 +161,30 @@ defmodule LR.Parser do
     %{simples: simples, some: some}
   end
 
+  defp test_ebnf() do
+    %{
+      non_terminal: [
+        "Expression ::= '(' Expression ')' | Times",
+        "Times ::= (POS '*' Expression) | Addition",
+        "Addition ::= (POS '+' Expression) | POS"
+      ],
+      terminal: [
+        "POS ::= '-'? [0-9]+"
+      ]
+    }
+  end
+
   def test(test_str) do
-    %{terminal: terminal_forms, non_terminal: non_terminals} = EbnfParser.Forms.sparql()
+    # EbnfParser.Forms.sparql()
+    %{terminal: terminal_forms, non_terminal: non_terminals} = test_ebnf()
 
     terminals =
       terminal_forms
       |> Enum.map(fn x -> EbnfParser.Sparql.split_single_form(x, true) end)
       |> Enum.map(fn {name, {_, rest}} -> {name, rest} end)
+      |> IO.inspect(label: "terminals")
+
+    terminal_rules = terminals |> Enum.map(fn {id, _} -> {id, [{:terminal, id}]} end)
 
     flat_ebnf =
       non_terminals
@@ -193,7 +215,7 @@ defmodule LR.Parser do
 
     word_to_terminal = fn {_, str} = x ->
       if is_word?(x) do
-        {:symbol, String.to_atom("ID_" <> str)}
+        {:terminal, String.to_atom("ID_" <> str)}
       else
         x
       end
@@ -203,33 +225,53 @@ defmodule LR.Parser do
       non_terminals
       |> Enum.map(fn x -> EbnfParser.Sparql.split_single_form(x, false) end)
       |> Enum.map(fn {k, {_, v}} -> {k, v} end)
+      |> Enum.concat(terminal_rules)
       |> Enum.map(fn {k, v} -> {k, map_in_ebnf(v, word_to_terminal)} end)
       |> Enum.reduce(%{simples: %{}, some: %{}}, &into_symbol_rules/2)
 
     # Make some things actually some things
-
     rules =
-      Enum.map(some, fn {[[x]], id} -> {[[x, id], []], id} end)
+      Enum.map(some, fn {[x], id} -> {[[x, id], []], id} end)
       |> Enum.concat(simples)
       |> Enum.flat_map(fn {k, v} -> Enum.map(k, &{v, &1}) end)
+    #   |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
 
-    start = {:ST, [:Sparql, LR.Grammar.Terminal.dollar()]}
+    # {singles, non_singles} =
+    #   Enum.split_with(rules, fn {k, v} ->
+    #     length(v) == 1 and k |> to_string |> String.starts_with?("__")
+    #   end)
+
+    # singles = Map.new(singles) |> IO.inspect()
+    # remove_singles = fn x -> Map.get(singles, x, [x]) end
+
+    # non_singles =
+    #   non_singles
+    #   |> Enum.map(fn {k, v} ->
+    #     vv = Enum.map(v, &Enum.flat_map(&1, remove_singles))
+    #     {k, vv}
+    #   end)
+
+    # rules = Enum.flat_map(non_singles, fn {x, v} -> Enum.map(v, &{x, &1}) end)
+
+    # simples
+    start = {:ST, [:Expression, LR.Grammar.Terminal.dollar()]}
 
     {start, state_map} = LR.Grammar.rules_to_state_map(start, rules)
 
+    # # start
+    # IO.puts(ItemSet.to_string(start))
+    # rules
+    #   |> Enum.flat_map(&elem(&1, 1))
+    #   |> Enum.filter(&is_list/1)
 
-    # start
+    tokens =
+    (tokenize(regexes, test_str) |> Enum.map(&TerminalInstance.new/1)) ++
+      [LR.Grammar.Terminal.dollar()]
 
+    LR.Grammar.parse([start], state_map, [], tokens)
 
-    # # tokens = tokenize(regexes, test_str) ++ [LR.Grammar.Terminal.dollar()]
-
-    # # LR.Grammar.parse([start], state_map, [], tokens)
-
+    # nil
     # map_size(state_map)
-
-    IO.puts(
-      ItemSet.to_string(start)
-    )
 
     # |> Map.new()
     # nil

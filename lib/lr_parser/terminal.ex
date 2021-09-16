@@ -1,76 +1,58 @@
 alias LR.Grammar.Terminal
+alias LR.Grammar.Terminal.Instance
+
+defmodule Instance do
+  defstruct [:id, :str]
+
+  def new({id, str}) do
+    %Instance{id: id, str: str}
+  end
+end
 
 defmodule Terminal do
-  defstruct [:str]
+  defstruct [:id]
 
   defimpl String.Chars, for: Terminal do
-    def to_string(%Terminal{str: str}) do
-      str
-    end
-  end
-
-  defimpl LR.Rule, for: Terminal do
-    def nullable(%Terminal{} = rule) do
-      Terminal.match(rule, "")
-      # first(rule) |> Enum.any?(&LR.Rule.nullable/1)
-    end
-
-    def first(%Terminal{} = rule) do
-      MapSet.new()
-      |> MapSet.put(rule)
-
-      # rule
-      # Enum.reduce_while()
-      # Enum.take_while()
-    end
-
-    def follow(%Terminal{}) do
-      MapSet.new()
+    def to_string(%Terminal{id: id}) do
+      Kernel.to_string(id)
+      # id
     end
   end
 
   def new(str) do
-    %Terminal{str: str}
-  end
-
-  def nullable?(%Terminal{str: str}) do
-    str == ""
-  end
-
-  def match(%Terminal{str: str}, test_str) do
-    str == test_str
+    %Terminal{id: String.to_atom(str)}
   end
 
   def dollar do
-    %Terminal{str: "$"}
+    %Terminal{id: "$"}
   end
 
   def lparen do
-    %Terminal{str: "("}
+    %Terminal{id: "("}
   end
 
   def rparen do
-    %Terminal{str: ")"}
+    %Terminal{id: ")"}
   end
 
   def comma do
-    %Terminal{str: ","}
+    %Terminal{id: ","}
   end
 
   def plus do
-    %Terminal{str: "+"}
+    %Terminal{id: "+"}
   end
 
   def x do
-    %Terminal{str: "x"}
+    %Terminal{id: "x"}
   end
 
   def empty do
-    %Terminal{str: ""}
+    %Terminal{id: ""}
   end
 
   def space do
-    %Terminal{str: "_"}
+    %Terminal{id: "_"}
   end
 
   defp flatten_part({:symbol, sym}, forms) do

@@ -1,20 +1,10 @@
 alias LR.Grammar.Terminal
+alias LR.Grammar.Terminal.Instance, as: TerminalInstance
 alias LR.Grammar.NonTerminal
 alias LR.Grammar.Item
 alias LR.Grammar.ItemSet
 alias LR.Grammar.Transition
 alias LR.Grammar.Action
-
-defprotocol LR.Rule do
-  @spec nullable(t) :: boolean
-  def nullable(rule)
-
-  @spec first(t) :: MapSet.t(t())
-  def first(rule)
-
-  @spec follow(t) :: MapSet.t(t())
-  def follow(rule)
-end
 
 defmodule LR.Grammar do
   import Terminal
@@ -62,6 +52,10 @@ defmodule LR.Grammar do
 
   def get_key(%NonTerminal{name: name}) do
     name
+  end
+
+  def get_key(%TerminalInstance{id: id}) do
+    id
   end
 
   def get_key(x) do
@@ -164,10 +158,13 @@ defmodule LR.Grammar do
   def calc_firsts(firsts, nullables, rules) do
     new_firsts =
       Enum.reduce(rules, firsts, fn {name, parts}, firsts ->
+        IO.inspect({name, parts, firsts[name]}, label: "Rule")
         rule_firsts =
           get_to_first_not_nullables(parts, nullables)
-          |> Enum.reduce(firsts[name] || MapSet.new(), &MapSet.union(firsts[&1], &2))
+          |> IO.inspect()
+          |> Enum.reduce(firsts[name], &MapSet.union(firsts[&1], &2))
 
+          IO.inspect(rule_firsts, label: "to")
         Map.put(firsts, name, rule_firsts)
       end)
 
@@ -268,32 +265,39 @@ defmodule LR.Grammar do
 
   def rules_to_state_map(start, rules) do
     rules_dict = rules |> rules_dict()
-
+    IO.inspect(rules)
     nullables =
       rules
+      # Get empty rules
       |> Enum.filter(&Enum.empty?(elem(&1, 1)))
+      # Map to id
       |> Enum.map(&elem(&1, 0))
       |> MapSet.new()
-      |> IO.inspect(label: "pre nullables")
+      # Calculate other nullables
       |> nullable(rules)
       |> IO.inspect(label: "nullables")
 
-    frs =
-      rules
-      |> Enum.flat_map(&elem(&1, 1))
+    all_parts = (rules |> Enum.flat_map(&elem(&1, 1))) |> Enum.concat(rules |> Enum.map(&elem(&1, 0)))
+
+    firsts =
+      all_parts
       |> Enum.map(fn x ->
+        IO.inspect(x, label: "doing this")
         case x do
-          %Terminal{} -> {x, MapSet.new() |> MapSet.put(x)}
-          _ -> {x, MapSet.new()}
+          %Terminal{} ->
+            {x, MapSet.new() |> MapSet.put(x)}
+
+          _ ->
+            {x, MapSet.new()}
         end
       end)
       |> Map.new()
       |> calc_firsts(nullables, rules)
-      |> IO.inspect(label: "frs")
+      |> IO.inspect(label: "Firsts")
 
-    follows =
-      calc_follow(%{}, frs, nullables, rules)
-      |> IO.inspect(label: "follows")
+
+      follows = calc_follow(%{}, firsts, nullables, rules)
+    |> IO.inspect(label: "follows")
 
     # Append dollar() to state you want to parse to
     start =
